@@ -1,5 +1,6 @@
 """게임 전체 흐름(메뉴, 기능 선택, 종료)을 관리하는 QuizGame 클래스."""
 
+from default_quizzes import create_default_quizzes
 from input_helper import read_number
 
 LINE = "=" * 40
@@ -9,7 +10,7 @@ class QuizGame:
     MENU_ITEMS = ("퀴즈 풀기", "퀴즈 추가", "퀴즈 목록", "점수 확인", "종료")
 
     def __init__(self):
-        self.quizzes = []
+        self.quizzes = create_default_quizzes()
         self.best_score = None
 
     def run(self):
