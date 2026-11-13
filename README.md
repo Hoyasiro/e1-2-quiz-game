@@ -134,3 +134,9 @@ e1-2-quiz-game/
 | 퀴즈 추가 | 점수 확인 |
 |---|---|
 | ![퀴즈 추가](docs/screenshots/add_quiz.png) | ![점수 확인](docs/screenshots/score.png) |
+
+## 8. Git 실습 기록
+
+- 이 줄은 저장소를 다른 폴더(`e1-2-quiz-game-clone`)에 `git clone`한 뒤, 그 복제본에서 추가하고 `commit`·`push`했습니다.
+- 원래 작업 폴더(`e1-2-quiz-game`)에서는 `git pull`로 이 변경을 받아 반영을 확인했습니다.
+- 퀴즈 풀기 기능은 `feature/play-quiz` 브랜치에서 만들고 `git checkout main` 후 `git merge --no-ff`로 병합했습니다.
