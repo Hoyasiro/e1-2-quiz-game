@@ -2,8 +2,10 @@
 
 from default_quizzes import create_default_quizzes
 from input_helper import read_number
+from quiz import CHOICE_COUNT
 
 LINE = "=" * 40
+THIN_LINE = "-" * 40
 
 
 class QuizGame:
@@ -49,7 +51,49 @@ class QuizGame:
         print(LINE)
 
     def play(self):
-        print("🚧 퀴즈 풀기는 준비 중입니다.")
+        """저장된 퀴즈를 순서대로 출제하고, 다 풀면 결과를 보여 준다."""
+        total = len(self.quizzes)
+        if total == 0:
+            print("📭 등록된 퀴즈가 없습니다. 먼저 '2. 퀴즈 추가'로 퀴즈를 등록하세요.")
+            return
+
+        print(f"📝 퀴즈를 시작합니다! (총 {total}문제)")
+
+        correct_count = 0
+        for number, quiz in enumerate(self.quizzes, start=1):
+            if self.ask_quiz(number, quiz):
+                correct_count += 1
+
+        self.show_result(correct_count, total)
+
+    @staticmethod
+    def calculate_score(correct_count, total):
+        """맞힌 개수를 100점 만점 점수(정수, 소수점 첫째 자리에서 반올림)로 바꾼다.
+
+        round()는 12.5를 12로 만드는 '짝수 반올림'이라, 0.5를 더하고 버리는 방식을 쓴다.
+        """
+        return int(correct_count * 100 / total + 0.5)
+
+    def show_result(self, correct_count, total):
+        score = self.calculate_score(correct_count, total)
+        print()
+        print(LINE)
+        print(f"🏆 결과: {total}문제 중 {correct_count}문제 정답! ({score}점)")
+        print(LINE)
+
+    def ask_quiz(self, number, quiz):
+        """퀴즈 한 문제를 보여 주고 답을 받아 정답 여부를 알려 준다."""
+        print()
+        print(THIN_LINE)
+        quiz.display(number)
+        user_answer = read_number("정답 입력: ", 1, CHOICE_COUNT)
+
+        if quiz.is_correct(user_answer):
+            print("✅ 정답입니다!")
+            return True
+
+        print(f"❌ 오답입니다. 정답은 {quiz.answer}번 '{quiz.correct_choice()}'입니다.")
+        return False
 
     def add_quiz(self):
         print("🚧 퀴즈 추가는 준비 중입니다.")
