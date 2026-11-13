@@ -25,3 +25,12 @@ def read_number(prompt, minimum, maximum):
             continue
 
         return number
+
+
+def read_text(prompt):
+    """비어 있지 않은 문자열을 입력받아 앞뒤 공백을 지우고 돌려준다."""
+    while True:
+        text = input(prompt).strip()
+        if text:
+            return text
+        print("⚠️ 입력이 비어 있습니다. 내용을 입력하세요.")
