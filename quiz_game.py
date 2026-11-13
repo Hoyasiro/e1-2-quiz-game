@@ -2,8 +2,10 @@
 
 from default_quizzes import create_default_quizzes
 from input_helper import read_number
+from quiz import CHOICE_COUNT
 
 LINE = "=" * 40
+THIN_LINE = "-" * 40
 
 
 class QuizGame:
@@ -49,7 +51,29 @@ class QuizGame:
         print(LINE)
 
     def play(self):
-        print("🚧 퀴즈 풀기는 준비 중입니다.")
+        """저장된 퀴즈를 순서대로 출제하고 맞힌 개수를 돌려준다."""
+        total = len(self.quizzes)
+        print(f"📝 퀴즈를 시작합니다! (총 {total}문제)")
+
+        correct_count = 0
+        for number, quiz in enumerate(self.quizzes, start=1):
+            if self.ask_quiz(number, quiz):
+                correct_count += 1
+        return correct_count
+
+    def ask_quiz(self, number, quiz):
+        """퀴즈 한 문제를 보여 주고 답을 받아 정답 여부를 알려 준다."""
+        print()
+        print(THIN_LINE)
+        quiz.display(number)
+        user_answer = read_number("정답 입력: ", 1, CHOICE_COUNT)
+
+        if quiz.is_correct(user_answer):
+            print("✅ 정답입니다!")
+            return True
+
+        print(f"❌ 오답입니다. 정답은 {quiz.answer}번 '{quiz.correct_choice()}'입니다.")
+        return False
 
     def add_quiz(self):
         print("🚧 퀴즈 추가는 준비 중입니다.")
