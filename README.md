@@ -135,6 +135,10 @@ e1-2-quiz-game/
 |---|---|
 | ![퀴즈 추가](docs/screenshots/add_quiz.png) | ![점수 확인](docs/screenshots/score.png) |
 
+| 개발 환경 | `git log --oneline --graph` |
+|---|---|
+| ![개발 환경](docs/screenshots/env.png) | ![git log](docs/screenshots/git_log.png) |
+
 ## 8. Git 실습 기록
 
 - 이 줄은 저장소를 다른 폴더(`e1-2-quiz-game-clone`)에 `git clone`한 뒤, 그 복제본에서 추가하고 `commit`·`push`했습니다.
