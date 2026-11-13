@@ -9,13 +9,34 @@ THIN_LINE = "-" * 40
 
 
 class QuizGame:
-    MENU_ITEMS = ("퀴즈 풀기", "퀴즈 추가", "퀴즈 목록", "점수 확인", "종료")
+    """퀴즈 게임 전체를 관리한다.
+
+    속성
+        quizzes      : Quiz 객체 목록
+        best_score   : 최고 점수(0~100). 아직 풀지 않았으면 None
+        best_correct : 최고 점수를 냈을 때 맞힌 개수
+        best_total   : 최고 점수를 냈을 때 전체 문제 수
+    """
+
+    TITLE = "🎯 개발 입문 용어 퀴즈 🎯"
+    QUIT_LABEL = "종료"
 
     def __init__(self):
         self.quizzes = create_default_quizzes()
-        self.best_score = None  # 아직 한 번도 풀지 않았으면 None
-        self.best_correct = 0   # 최고 점수를 냈을 때 맞힌 개수
-        self.best_total = 0     # 최고 점수를 냈을 때 전체 문제 수
+        self.best_score = None
+        self.best_correct = 0
+        self.best_total = 0
+
+        # 메뉴 번호 순서대로 (이름, 실행할 메서드)를 한곳에 모아 둔다.
+        # 메뉴를 늘릴 때는 이 목록에 한 줄만 추가하면 된다.
+        self.menu_actions = [
+            ("퀴즈 풀기", self.play),
+            ("퀴즈 추가", self.add_quiz),
+            ("퀴즈 목록", self.show_quizzes),
+            ("점수 확인", self.show_score),
+        ]
+
+    # ---------- 게임 흐름 ----------
 
     def run(self):
         """메뉴를 반복해서 보여 주고, Ctrl+C·입력 종료(EOF)가 와도 안전하게 끝낸다."""
@@ -27,30 +48,28 @@ class QuizGame:
 
     def menu_loop(self):
         """종료를 고를 때까지 메뉴를 보여 주고 선택한 기능을 실행한다."""
+        quit_number = len(self.menu_actions) + 1
         while True:
             self.show_menu()
-            choice = read_number("선택: ", 1, len(self.MENU_ITEMS))
+            choice = read_number("선택: ", 1, quit_number)
             print()
 
-            if choice == 1:
-                self.play()
-            elif choice == 2:
-                self.add_quiz()
-            elif choice == 3:
-                self.show_quizzes()
-            elif choice == 4:
-                self.show_score()
-            else:
+            if choice == quit_number:
                 return
+            _, action = self.menu_actions[choice - 1]
+            action()
 
     def show_menu(self):
         print()
         print(LINE)
-        print("        🎯 개발 입문 용어 퀴즈 🎯")
+        print(f"        {self.TITLE}")
         print(LINE)
-        for number, item in enumerate(self.MENU_ITEMS, start=1):
-            print(f"{number}. {item}")
+        for number, (label, _) in enumerate(self.menu_actions, start=1):
+            print(f"{number}. {label}")
+        print(f"{len(self.menu_actions) + 1}. {self.QUIT_LABEL}")
         print(LINE)
+
+    # ---------- 퀴즈 풀기 ----------
 
     def play(self):
         """저장된 퀴즈를 순서대로 출제하고, 다 풀면 결과를 보여 준다."""
@@ -111,6 +130,8 @@ class QuizGame:
         print(f"❌ 오답입니다. 정답은 {quiz.answer}번 '{quiz.correct_choice()}'입니다.")
         return False
 
+    # ---------- 퀴즈 추가·목록 ----------
+
     def add_quiz(self):
         """문제, 선택지 4개, 정답 번호를 입력받아 새 퀴즈를 등록한다."""
         print("📌 새로운 퀴즈를 추가합니다.")
@@ -146,6 +167,8 @@ class QuizGame:
         for number, quiz in enumerate(self.quizzes, start=1):
             print(f"[{number}] {quiz.question}")
         print(THIN_LINE)
+
+    # ---------- 점수 ----------
 
     def show_score(self):
         """최고 점수를 보여 준다. 아직 풀지 않았으면 안내한다."""
