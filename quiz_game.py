@@ -1,4 +1,8 @@
-"""게임 전체 흐름(메뉴, 기능 선택, 종료)을 관리하는 QuizGame 클래스."""
+"""게임 전체 흐름(메뉴, 기능 선택, 저장/불러오기, 종료)을 관리하는 QuizGame 클래스."""
+
+import json
+import os
+from pathlib import Path
 
 from default_quizzes import create_default_quizzes
 from input_helper import read_number, read_text
@@ -6,6 +10,9 @@ from quiz import CHOICE_COUNT, Quiz
 
 LINE = "=" * 40
 THIN_LINE = "-" * 40
+
+# 프로젝트 루트(이 파일이 있는 폴더)의 state.json. 어느 폴더에서 실행해도 같은 파일을 쓴다.
+STATE_FILE = Path(__file__).resolve().parent / "state.json"
 
 
 class QuizGame:
@@ -21,7 +28,9 @@ class QuizGame:
     TITLE = "🎯 개발 입문 용어 퀴즈 🎯"
     QUIT_LABEL = "종료"
 
-    def __init__(self):
+    def __init__(self, state_file=STATE_FILE):
+        self.state_file = Path(state_file)
+        self.save_enabled = True  # 기존 파일을 읽지 못했을 때 덮어쓰지 않도록 끄는 스위치
         self.quizzes = create_default_quizzes()
         self.best_score = None
         self.best_correct = 0
@@ -39,11 +48,17 @@ class QuizGame:
     # ---------- 게임 흐름 ----------
 
     def run(self):
-        """메뉴를 반복해서 보여 주고, Ctrl+C·입력 종료(EOF)가 와도 안전하게 끝낸다."""
+        """저장된 데이터를 불러오고 메뉴를 반복한다.
+
+        Ctrl+C·입력 종료(EOF)가 와도 저장한 뒤 안전하게 끝낸다.
+        """
+        self.load_state()
         try:
             self.menu_loop()
         except (KeyboardInterrupt, EOFError):
             print("\n\n⚠️ 입력이 중단되어 게임을 종료합니다.")
+        if self.save_state():
+            print("💾 데이터를 저장했습니다.")
         print("👋 게임을 종료합니다. 다음에 또 만나요!")
 
     def menu_loop(self):
@@ -102,6 +117,7 @@ class QuizGame:
         print(f"🏆 결과: {total}문제 중 {correct_count}문제 정답! ({score}점)")
         if self.update_best_score(score, correct_count, total):
             print("🎉 새로운 최고 점수입니다!")
+            self.save_state()
         else:
             print(f"현재 최고 점수는 {self.best_score}점입니다.")
         print(LINE)
@@ -143,6 +159,7 @@ class QuizGame:
         self.quizzes.append(Quiz(question, choices, answer))
         print()
         print(f"✅ 퀴즈가 추가되었습니다! (현재 {len(self.quizzes)}개)")
+        self.save_state()
 
     def read_choices(self):
         """서로 다른 선택지 4개를 입력받는다. 이미 입력한 선택지와 같으면 다시 묻는다."""
@@ -176,5 +193,119 @@ class QuizGame:
             print("📭 아직 퀴즈를 푼 기록이 없습니다. '1. 퀴즈 풀기'로 도전해 보세요!")
             return
 
-        print(f"🏆 최고 점수: {self.best_score}점 "
-              f"({self.best_total}문제 중 {self.best_correct}문제 정답)")
+        if self.best_total > 0:
+            print(f"🏆 최고 점수: {self.best_score}점 "
+                  f"({self.best_total}문제 중 {self.best_correct}문제 정답)")
+        else:
+            print(f"🏆 최고 점수: {self.best_score}점")
+
+    # ---------- 파일 저장/불러오기 (state.json) ----------
+
+    def reset_to_defaults(self):
+        """기본 퀴즈와 '기록 없음' 상태로 되돌린다."""
+        self.quizzes = create_default_quizzes()
+        self.best_score = None
+        self.best_correct = 0
+        self.best_total = 0
+
+    def load_state(self):
+        """state.json에서 퀴즈와 최고 점수를 불러온다.
+
+        - 파일이 없으면(첫 실행): 기본 퀴즈로 시작하고 새로 저장한다.
+        - 파일이 손상됐으면: 안내 후 손상 파일을 state.json.broken으로 남기고 기본 퀴즈로 복구한다.
+        - 파일을 읽을 수 없으면(권한·다른 프로그램이 사용 중 등): 안내 후 기본 퀴즈로 시작하고,
+          기존 파일을 기본 데이터로 덮어쓰지 않도록 이번 실행에서는 저장하지 않는다.
+        """
+        if not self.state_file.exists():
+            print("📂 저장된 데이터가 없어 기본 퀴즈로 시작합니다.")
+            self.reset_to_defaults()
+            self.save_state()
+            return
+
+        try:
+            with open(self.state_file, "r", encoding="utf-8") as file:
+                data = json.load(file)
+            self.apply_state(data)
+        except OSError as error:
+            print(f"⚠️ 데이터 파일을 읽을 수 없어 기본 퀴즈로 시작합니다. ({error})")
+            print("   기존 파일을 보호하기 위해 이번 실행에서는 저장하지 않습니다.")
+            self.reset_to_defaults()
+            self.save_enabled = False
+            return
+        except (ValueError, TypeError) as error:
+            # json.JSONDecodeError, UnicodeDecodeError도 ValueError의 한 종류다.
+            print(f"⚠️ 데이터 파일이 손상되어 기본 퀴즈로 복구합니다. ({error})")
+            self.keep_broken_file()
+            self.reset_to_defaults()
+            self.save_state()
+            return
+
+        if self.best_score is None:
+            score_text = "아직 기록 없음"
+        else:
+            score_text = f"최고 점수 {self.best_score}점"
+        print(f"📂 저장된 데이터를 불러왔습니다. (퀴즈 {len(self.quizzes)}개, {score_text})")
+
+    def apply_state(self, data):
+        """읽어 온 데이터를 검사한 뒤 게임에 반영한다. 형식이 틀리면 ValueError."""
+        if not isinstance(data, dict):
+            raise ValueError("최상위 형식이 객체(dict)가 아닙니다.")
+
+        raw_quizzes = data.get("quizzes")
+        if not isinstance(raw_quizzes, list):
+            raise ValueError("quizzes가 목록(list)이 아닙니다.")
+        quizzes = [Quiz.from_dict(item) for item in raw_quizzes]
+
+        best_score = data.get("best_score")
+        best_correct = data.get("best_correct", 0)
+        best_total = data.get("best_total", 0)
+        if best_score is None:
+            best_correct, best_total = 0, 0
+        elif not (type(best_score) is int and 0 <= best_score <= 100):
+            raise ValueError("best_score가 0-100 사이의 정수가 아닙니다.")
+        elif not (type(best_correct) is int and type(best_total) is int
+                  and 0 <= best_correct <= best_total):
+            raise ValueError("best_correct·best_total 값이 올바르지 않습니다.")
+
+        # 모든 검사를 통과한 뒤에만 한꺼번에 바꾼다. (중간에 실패해도 상태가 섞이지 않게)
+        self.quizzes = quizzes
+        self.best_score = best_score
+        self.best_correct = best_correct
+        self.best_total = best_total
+
+    def save_state(self):
+        """퀴즈와 최고 점수를 state.json에 UTF-8로 저장한다. 성공하면 True.
+
+        임시 파일에 먼저 다 쓴 뒤 바꿔치기해서, 저장 도중 멈춰도 기존 파일이 깨지지 않게 한다.
+        """
+        if not self.save_enabled:
+            return False
+
+        data = {
+            "quizzes": [quiz.to_dict() for quiz in self.quizzes],
+            "best_score": self.best_score,
+            "best_correct": self.best_correct,
+            "best_total": self.best_total,
+        }
+        temp_file = self.state_file.with_name(self.state_file.name + ".tmp")
+        try:
+            with open(temp_file, "w", encoding="utf-8") as file:
+                json.dump(data, file, ensure_ascii=False, indent=2)
+            os.replace(temp_file, self.state_file)
+        except OSError as error:
+            print(f"⚠️ 데이터를 저장하지 못했습니다. ({error})")
+            try:
+                temp_file.unlink(missing_ok=True)  # 남은 임시 파일 정리
+            except OSError:
+                pass
+            return False
+        return True
+
+    def keep_broken_file(self):
+        """손상된 파일을 state.json.broken으로 옮겨 두어 내용을 확인할 수 있게 한다."""
+        broken_file = self.state_file.with_name(self.state_file.name + ".broken")
+        try:
+            os.replace(self.state_file, broken_file)
+            print(f"   손상된 파일은 {broken_file.name}(으)로 보관했습니다.")
+        except OSError:
+            pass

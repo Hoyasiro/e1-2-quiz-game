@@ -8,6 +8,8 @@ venv/
 
 # 실행할 때마다 바뀌는 게임 데이터 (첫 실행 시 기본 퀴즈로 자동 생성)
 state.json
+# 저장 중 임시 파일(state.json.tmp), 손상 파일 백업(state.json.broken)
+state.json.*
 
 # 에디터·OS 파일
 .vscode/
